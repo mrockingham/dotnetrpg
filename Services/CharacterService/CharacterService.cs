@@ -1,3 +1,4 @@
+ global using AutoMapper;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,24 +12,122 @@ namespace dotnet_rpg.Services.CharacterService
             new Character(),
             new Character { Id = 1, Name = "Michael"}
         };
-        public List<Character> AddCharacter(Character newCharacter)
+
+        private readonly IMapper _mapper;
+        private readonly DataContext _context;
+        public CharacterService(IMapper mapper, DataContext context)
         {
-             characters.Add(newCharacter);
-            return characters;
+            _context = context;
+            _mapper = mapper;
+        }
+        public async Task<ServiceResponse<List<GetCharacterDto>>> AddCharacter(AddCharacterDto newCharacter)
+        {
+              var serviceResponse = new ServiceResponse<List<GetCharacterDto>>();
+            var character = _mapper.Map<Character>(newCharacter);
+            var dbCharacters = await _context.Characters.ToListAsync();
+           
+
+            _context.Characters.Add(character);
+            await _context.SaveChangesAsync();
+
+            serviceResponse.Data = serviceResponse.Data = dbCharacters.Select(c => _mapper.Map<GetCharacterDto>(c)).ToList();
+            return serviceResponse;
+          
+            //  var serviceResponse = new ServiceResponse<List<GetCharacterDto>>();
+            //  var character = _mapper.Map<Character>(newCharacter);
+            // character.Id = characters.Max(c=> c.Id) +1;
+            //  characters.Add(character);
+            //  serviceResponse.Data = characters.Select(c => _mapper.Map<GetCharacterDto>(c)).ToList();
+            // return serviceResponse;
         }
 
-        public List<Character> GetAllCharacters()
+        public async Task<ServiceResponse<List<GetCharacterDto>>> DeleteCharacter(int id)
         {
-               return characters;
+             var serviceResponse = new ServiceResponse<List<GetCharacterDto>>();
+            try{
+
+            var character = characters.FirstOrDefault(c => c.Id == id);
+            if(character is null){
+
+                throw new Exception($"Character with Id '{id}' not found.");
+
+            } 
+
+           characters.Remove(character);
+     
+
+            serviceResponse.Data = characters.Select(c => _mapper.Map<GetCharacterDto>(c)).ToList();
+            serviceResponse.Success = true;
+            serviceResponse.Message = "Character updated successfully";
+            }
+            catch (Exception ex)
+            {
+                serviceResponse.Success = false;
+                serviceResponse.Message = ex.Message;
+
+            }
+
+            return serviceResponse;
         }
 
-        public Character GetCharacterById(int id)
+        public async Task<ServiceResponse<List<GetCharacterDto>>> GetAllCharacters()
+          {
+            var serviceResponse = new ServiceResponse<List<GetCharacterDto>>();
+            var dbCharacters = await _context.Characters.ToListAsync();
+            serviceResponse.Data = dbCharacters.Select(c => _mapper.Map<GetCharacterDto>(c)).ToList();
+            return serviceResponse;
+        }
+        // {
+        //     var serviceResponse = new ServiceResponse<List<GetCharacterDto>>();
+        //     var dbCharacters = await _context.Characters.ToListAsync();
+        //         serviceResponse.Data = dbCharacters.Select(c => _mapper.Map<GetCharacterDto>(c)).ToList();
+        //         // serviceResponse.Data = characters.Select(c => _mapper.Map<GetCharacterDto>(c)).ToList();
+        //        return serviceResponse;
+        // }
+
+        public async Task<ServiceResponse<GetCharacterDto>> GetCharacterById(int id)
         {
+            var serviceResponse = new ServiceResponse<GetCharacterDto>();
             var character = characters.FirstOrDefault( c => c.Id == id);
-             if(  character is not null)
-             return character;
+            serviceResponse.Data = _mapper.Map<GetCharacterDto>(character);
+         
+            return serviceResponse;
 
-             throw new Exception("Character not found");
+        }
+
+        public async Task<ServiceResponse<GetCharacterDto>> UpdateCharacter(UpdateCharacterDto updatedCharacter)
+        {
+            var serviceResponse = new ServiceResponse<GetCharacterDto>();
+            try{
+
+            var character = characters.FirstOrDefault(c => c.Id == updatedCharacter.Id);
+            if(character is null){
+
+                throw new Exception($"Character with Id '{updatedCharacter.Id}' not found.");
+            } 
+
+            // _mapper.Map<Character>(updatedCharacter);
+            // _mapper.Map(updatedCharacter, character);
+          
+            character.Name = updatedCharacter.Name;
+            character.HitPoints = updatedCharacter.HitPoints;
+            character.Strength = updatedCharacter.Strength;
+            character.Defense = updatedCharacter.Defense;
+            character.Intelligence = updatedCharacter.Intelligence;
+            character.Class = updatedCharacter.Class;
+
+            serviceResponse.Data = _mapper.Map<GetCharacterDto>(character);
+            serviceResponse.Success = true;
+            serviceResponse.Message = "Character updated successfully";
+            }
+            catch (Exception ex)
+            {
+                serviceResponse.Success = false;
+                serviceResponse.Message = ex.Message;
+
+            }
+
+            return serviceResponse;
         }
     }
 }
